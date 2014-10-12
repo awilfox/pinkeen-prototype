@@ -66,7 +66,7 @@ namespace DCPProject.ProtoLib
         /// <returns>true if the key is present; false otherwise.</returns>
         public bool HasValueForKey(string key)
         {
-            return param.ContainsKey(key);
+            return param != null && param.ContainsKey(key);
         }
 
         /// <summary>
@@ -82,6 +82,20 @@ namespace DCPProject.ProtoLib
         }
 
         /// <summary>
+        /// Return a UTF-8 string from a null-terminated slice of a byte array.
+        /// </summary>
+        /// <param name="b">The byte array.</param>
+        /// <param name="start">The position of the byte array the string starts at.</param>
+        /// <param name="length">Will contain the length of the string in bytes (NOT characters).</param>
+        /// <returns>The UTF-8 string.</returns>
+        private static string StringFromByteSlice(byte[] b, int start, out int length)
+        {
+            byte[] next = b.Skip(start).TakeWhile((x) => (x != 0)).ToArray();
+            length = next.Count();
+            return Encoding.UTF8.GetString(next, 0, length);
+        }
+
+        /// <summary>
         /// Create a Message object from a raw DCP message frame.
         /// </summary>
         /// <param name="bytes">The byte sequence containing a DCP message frame.</param>
@@ -90,8 +104,8 @@ namespace DCPProject.ProtoLib
         {
             string src, dst, cmd;
             short len;
-            int curr;
-            List<byte> friendlyBytes = new List<byte>(bytes);
+            int curr = 2;
+            byte[] friendlyBytes = bytes.ToArray();
 
             /*
              * The Windows Store API does not allow access to
@@ -111,6 +125,18 @@ namespace DCPProject.ProtoLib
 #endif
                 return null;
             }
+
+            int size;
+            src = StringFromByteSlice(friendlyBytes, curr, out size);
+            curr += size + 1;
+
+            dst = StringFromByteSlice(friendlyBytes, curr, out size);
+            curr += size + 1;
+
+            cmd = StringFromByteSlice(friendlyBytes, curr, out size);
+            curr += size + 1;
+
+            return new Message(src, dst, cmd, null);
         }
 
         /// <summary>
