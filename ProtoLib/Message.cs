@@ -143,9 +143,43 @@ namespace DCPProject.ProtoLib
         /// Serialise the current Message to a byte representation.
         /// </summary>
         /// <returns>A Byte array containing the raw DCP frame representation of this message.</returns>
-        public Byte[] ToBytes()
+        public byte[] ToBytes()
         {
+            List<string> strs = new List<string>();
 
+            strs.Add(source);
+            strs.Add(destination);
+            strs.Add(command);
+            
+            foreach(string key in param.Keys)
+            {
+                foreach(string value in param[key])
+                {
+                    strs.Add(key);
+                    strs.Add(value);
+                }
+            }
+
+            List<byte> result = new List<byte>();
+            // length + \0.
+            result.Add(0); result.Add(0); result.Add(0);
+            foreach (string s in strs)
+            {
+                result.AddRange(Encoding.UTF8.GetBytes(s));
+                result.Add(0);
+            }
+
+            short length = (short)result.Count;
+            if (length > 1600) return null; // too long
+
+            byte[] lenbytes = BitConverter.GetBytes(length);
+            if (BitConverter.IsLittleEndian) lenbytes = lenbytes.Reverse().ToArray();
+
+            byte[] ret = result.ToArray();
+            ret[0] = lenbytes[0];
+            ret[1] = lenbytes[1];
+
+            return ret;
         }
 
         /// <summary>
